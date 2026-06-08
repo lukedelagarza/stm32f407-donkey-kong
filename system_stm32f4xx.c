@@ -13,7 +13,7 @@
   *      - SystemCoreClock variable: Contains the core clock (HCLK), it can be used
   *                                  by the user application to setup the SysTick 
   *                                  timer or configure other parameters.
-  *                                     
+  *
   *      - SystemCoreClockUpdate(): Updates the variable SystemCoreClock and must
   *                                 be called whenever the core clock is changed
   *                                 during program execution.
@@ -48,7 +48,7 @@
 #include "stm32f4xx.h"
 
 #if !defined  (HSE_VALUE) 
-  #define HSE_VALUE    ((uint32_t)25000000) /*!< Default value of the External oscillator in Hz */
+  #define HSE_VALUE    ((uint32_t)8000000) /*!< Default value of the External oscillator in Hz */
 #endif /* HSE_VALUE */
 
 #if !defined  (HSI_VALUE)
@@ -159,17 +159,56 @@ const uint8_t APBPrescTable[8]  = {0, 0, 0, 0, 1, 2, 3, 4};
 
 /**
   * @brief  Setup the microcontroller system
-  *         Initialize the FPU setting, vector table location and External memory 
-  *         configuration.
+  *         Initialize CCM RAM, flash, FPU, and clocks.
   * @param  None
   * @retval None
   */
 void SystemInit(void)
 {
-  /* FPU settings ------------------------------------------------------------*/
-  #if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
-    SCB->CPACR |= ((3UL << 10*2)|(3UL << 11*2));  /* set CP10 and CP11 Full Access */
-  #endif
+    /* FPU settings ------------------------------------------------------------*/
+    #if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
+        SCB->CPACR |= ((3UL << 10*2)|(3UL << 11*2));  /* set CP10 and CP11 Full Access */
+    #endif
+
+    /* CCM data RAM ------------------------------------------------------------*/
+    SET_BIT(RCC->AHB1ENR, RCC_AHB1ENR_CCMDATARAMEN);
+
+    /* Flash configuration -----------------------------------------------------*/
+    MODIFY_REG(FLASH->ACR, FLASH_ACR_LATENCY, FLASH_ACR_LATENCY_5WS);
+    (void)READ_REG(FLASH->ACR);
+    SET_BIT(FLASH->ACR, FLASH_ACR_PRFTEN);
+    SET_BIT(FLASH->ACR, FLASH_ACR_ICEN);
+    SET_BIT(FLASH->ACR, FLASH_ACR_DCEN);
+
+    /* HSE clock ---------------------------------------------------------------*/
+    SET_BIT(RCC->CR, RCC_CR_HSEBYP);
+    SET_BIT(RCC->CR, RCC_CR_HSEON);
+    while (!READ_BIT(RCC->CR, RCC_CR_HSERDY)) {}
+
+    /* PLL configuration -------------------------------------------------------*/
+    MODIFY_REG(RCC->PLLCFGR,
+        RCC_PLLCFGR_PLLSRC  |
+        RCC_PLLCFGR_PLLM    |
+        RCC_PLLCFGR_PLLN    |
+        RCC_PLLCFGR_PLLP    |
+        RCC_PLLCFGR_PLLQ,
+        (4U     << RCC_PLLCFGR_PLLM_Pos) |
+        (168U   << RCC_PLLCFGR_PLLN_Pos) |
+        (0U     << RCC_PLLCFGR_PLLP_Pos) |
+        (7U     << RCC_PLLCFGR_PLLQ_Pos) |
+        RCC_PLLCFGR_PLLSRC_HSE);
+
+    SET_BIT(RCC->CR, RCC_CR_PLLON);
+    while (!READ_BIT(RCC->CR, RCC_CR_PLLRDY)) {}
+
+    /* Bus prescalers ----------------------------------------------------------*/
+    MODIFY_REG(RCC->CFGR, RCC_CFGR_HPRE,  RCC_CFGR_HPRE_DIV1);
+    MODIFY_REG(RCC->CFGR, RCC_CFGR_PPRE1, RCC_CFGR_PPRE1_DIV4);
+    MODIFY_REG(RCC->CFGR, RCC_CFGR_PPRE2, RCC_CFGR_PPRE2_DIV2);
+
+    /* Switch to PLL -----------------------------------------------------------*/
+    MODIFY_REG(RCC->CFGR, RCC_CFGR_SW, RCC_CFGR_SW_PLL);
+    while (READ_BIT(RCC->CFGR, RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) {}
 
 #if defined (DATA_IN_ExtSRAM) || defined (DATA_IN_ExtSDRAM)
   SystemInit_ExtMemCtl(); 
