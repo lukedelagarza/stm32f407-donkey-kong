@@ -160,6 +160,8 @@ const uint8_t APBPrescTable[8]  = {0, 0, 0, 0, 1, 2, 3, 4};
 /**
   * @brief  Setup the microcontroller system
   *         Initialize CCM RAM, flash, FPU, and clocks.
+  *         Define CLOCK_VERIFY to configure MCO sources/prescalers
+  *         for clock output testing.
   * @param  None
   * @retval None
   */
@@ -179,6 +181,12 @@ void SystemInit(void)
     SET_BIT(FLASH->ACR, FLASH_ACR_PRFTEN);
     SET_BIT(FLASH->ACR, FLASH_ACR_ICEN);
     SET_BIT(FLASH->ACR, FLASH_ACR_DCEN);
+
+#ifdef CLOCK_VERIFY
+    MODIFY_REG(RCC->CFGR, RCC_CFGR_MCO2,    (0b11  << RCC_CFGR_MCO2_Pos));
+    MODIFY_REG(RCC->CFGR, RCC_CFGR_MCO2PRE, (0b111 << RCC_CFGR_MCO2PRE_Pos));
+    MODIFY_REG(RCC->CFGR, RCC_CFGR_MCO1,    (0b10  << RCC_CFGR_MCO1_Pos));
+#endif
 
     /* HSE clock ---------------------------------------------------------------*/
     SET_BIT(RCC->CR, RCC_CR_HSEBYP);

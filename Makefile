@@ -25,15 +25,17 @@ LDSCRIPT = STM32F407VGTX_FLASH.ld
 ########################################################################
 # Sources
 ########################################################################
-C_SRCS   = src/main.c        \
-            system_stm32f4xx.c \
-            syscalls.c         \
-            sysmem.c
+C_SRCS   = src/main.c         \
+           src/clock_verify.c \
+           system_stm32f4xx.c \
+           syscalls.c         \
+           sysmem.c
 
 AS_SRCS  = startup_stm32f407vgtx.s
 
 OBJS     = $(addprefix $(BUILD)/, $(C_SRCS:.c=.o)) \
-            $(addprefix $(BUILD)/, $(AS_SRCS:.s=.o))
+           $(addprefix $(BUILD)/, $(AS_SRCS:.s=.o))
+
 DEPS     = $(OBJS:.o=.d)
 
 ########################################################################
@@ -43,33 +45,35 @@ CPU_FLAGS  = -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard
 
 INCLUDES   = -I cmsis -I inc
 
-CFLAGS     = $(CPU_FLAGS)                  \
-              $(INCLUDES)                   \
-              -DSTM32F407xx                 \
-              -Wall -Wextra                 \
-              -Wshadow                      \
-              -Wdouble-promotion            \
-              -Wformat=2                    \
-              -Wundef                       \
-              -fdata-sections               \
-              -ffunction-sections           \
-              -fno-common                   \
-              -fsigned-char                 \
-              -O0 -g3                       \
-              -std=c11                      \
-              -MMD -MP
+CFLAGS     = $(CPU_FLAGS)                           \
+             $(INCLUDES)                            \
+             -DSTM32F407xx                          \
+             -Wall -Wextra                          \
+             -Wshadow                               \
+             -Wdouble-promotion                     \
+             -Wformat=2                             \
+             -Wundef                                \
+             -fdata-sections                        \
+             -ffunction-sections                    \
+             -fno-common                            \
+             -fsigned-char                          \
+             -O0 -g3                                \
+             -std=c11                               \
+             -MMD -MP
 
-ASFLAGS    = $(CPU_FLAGS)                  \
-              -x assembler-with-cpp         \
-              -MMD -MP
+CFLAGS    += $(EXTRA_CFLAGS)
 
-LDFLAGS    = $(CPU_FLAGS)                  \
-              -T$(LDSCRIPT)                 \
-              -Wl,--gc-sections             \
-              -Wl,-Map=$(BUILD)/$(TARGET).map,--cref \
-              -Wl,--print-memory-usage      \
-              --specs=nano.specs            \
-              --specs=nosys.specs
+ASFLAGS    = $(CPU_FLAGS)                           \
+             -x assembler-with-cpp                  \
+             -MMD -MP
+
+LDFLAGS    = $(CPU_FLAGS)                           \
+             -T$(LDSCRIPT)                          \
+             -Wl,--gc-sections                      \
+             -Wl,-Map=$(BUILD)/$(TARGET).map,--cref \
+             -Wl,--print-memory-usage               \
+             --specs=nano.specs                     \
+             --specs=nosys.specs
 
 ########################################################################
 # Flashing / debugging  (OpenOCD + ST-Link)
@@ -192,4 +196,5 @@ help:
 	@echo "  debug         start OpenOCD GDB server and attach GDB"
 	@echo ""
 	@echo "Options:"
-	@echo "  V=1    verbose — echo full compiler/linker commands"
+	@echo "  V=1                          verbose — echo full compiler/linker commands"
+	@echo "  EXTRA_CFLAGS=-DCLOCK_VERIFY  enable clock output on PA8/PB8/PC9"
